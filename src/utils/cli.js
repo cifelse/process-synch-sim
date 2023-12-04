@@ -1,6 +1,8 @@
 import { stdin as input, stdout as output } from "node:process";
 import * as readline from "node:readline/promises";
 import chalk from "chalk";
+import { Transform } from "node:stream";
+import { Console } from "node:console";
 
 /**
  * @module utils/cli
@@ -39,10 +41,32 @@ export const cli = {
      * Prints a table to the console
      * @method
      * @param {String} data - The data to print
-     * @param {Bool} clear - Clear the console before printing the table
+     * @param {Bool} options - Options in printing the table
      */
-    table: (data, clear) => {
+    table: (data, options) => {
+        const { clear, reduce } = options;
+
         if (clear) console.clear();
+
+        if (reduce) {
+            const ts = new Transform({ transform(chunk, _, cb) { cb(null, chunk) } });
+            const logger = new Console({ stdout: ts }).table(data);
+
+            const table = (ts.read() || '').toString();
+
+            let result = '';
+            for (let row of table.split(/[\r\n]+/)) {
+                let r = row.replace(/[^┬]*┬/, '┌');
+                r = r.replace(/^├─*┼/, '├');
+                r = r.replace(/│[^│]*/, '');
+                r = r.replace(/^└─*┴/, '└');
+                r = r.replace(/'/g, ' ');
+                result += `${r}\n`;
+            }
+
+            return console.log(result);
+        }
+
         console.table(data);
     },
 

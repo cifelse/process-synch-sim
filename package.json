@@ -1,6 +1,7 @@
 {
   "name": "process-synch-sim",
   "version": "1.0.0",
+  "type": "module",
   "description": "A simple Node.js Project that simulates process synchronization. A project submitted to De La Salle University.",
   "main": "index.js",
   "scripts": {
