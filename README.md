@@ -15,3 +15,4 @@ At the root of the folder (and assuming you have downloaded the prerequisites),
 ## NPM Packages Used
 1. [chalk](https://www.npmjs.com/package/chalk) - for colored terminal output
 2. [vitest](https://www.npmjs.com/package/vitest) - for testing the output of the program automatically
+3. [async-sema](https://www.npmjs.com/package/async-sema) - for creating semaphores
