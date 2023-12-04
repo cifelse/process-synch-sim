@@ -1,4 +1,3 @@
-import { Sema } from 'async-sema';
 import { DEFAULTS } from './constants.js';
 
 /**
@@ -18,11 +17,9 @@ export class Game {
         if (typeof healers !== 'number')
             throw new Error(`Healers must be a number.`);
 
-        this.players = players;
+        this.players = { tanks, dps, healers };
 
-        console.log(tanks + dps + healers);
-        
-        this.totalPlayers = tanks + dps + healers;
+        this.totalPlayers = (tanks + dps + healers);
 
         const { instances, min, max } = settings;
 
@@ -65,52 +62,51 @@ export class Game {
         return healers ? healers : 0;
     }
 
-    get totalPlayers() {
-        const { totalPlayers } = this.settings;
+    /**
+     * Create a Party from the Pool of Players
+     * @method
+     * @returns {Object} - The Playing Party
+     */
+    formParty () {
+        const { Party } = DEFAULTS;
 
-        return totalPlayers ? totalPlayers : 0;
+        const { tanks, dps, healers } = this.players;
+
+        // Get the people playing
+        const dpsPlaying = dps < Party.dps ? dps : Party.dps;
+
+        const tanksPlaying = tanks < Party.tank ? tanks : Party.tank;
+
+        const healersPlaying = healers < Party.healer ? healers : Party.healer;
+
+        // Subtract to the actual
+        this.players = { 
+            tanks: tanks - tanksPlaying, 
+            dps: dps - dpsPlaying, 
+            healers: healers - healersPlaying
+        };
+
+        this.totalPlayers -= (dpsPlaying + tanksPlaying + healersPlaying);
+
+        // Returning Party
+        return { 
+            dps: dpsPlaying, 
+            tanks: tanksPlaying, 
+            healers: healersPlaying,
+            total: (dpsPlaying + tanksPlaying + healersPlaying)
+        };
     }
 
     /**
-     * Play the Game
+     * Play an actual Dungeon Run
+     * @method
+     * @param {Number} min
+     * @param {Number} max 
+     * @returns {Number} - Duration to finish the Dungeon
      */
-    async play () {
-        // Form a Party
-        const formParty = () => {
-            const { Party } = DEFAULTS;
-
-            this.dps = this.dps < Party.dps ? 0 : this.dps - Party.dps;
-
-            this.tanks = this.tanks < Party.tank ? 0 : this.tanks - Party.tank;
-
-            this.healers = this.healers < Party.healer ? 0 : this.healers - Party.healer;
-        }
-
-        // Get Random Number
-        const getRnd = (min, max) => {
-            min = Math.ceil(min);
-            max = Math.floor(max);
-            return Math.floor(Math.random() * (max - min + 1)) + min;
-        }
-
-        const { instances, min, max } = this.settings;
-
-        const sema = new Sema(instances, { capacity: instances });
-
-        await Promise.all(
-            this.players.map(async player => {
-                await sema.acquire();
-
-                const display = `${this.totalPlayers} is playing...`;
-
-                console.log(display);
-
-                await new Promise(resolve =>
-                    setTimeout(resolve, getRnd(min, max))
-                );
-
-                sema.release();
-            })
-        );
+    play (min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 }
