@@ -9,6 +9,18 @@ import { Console } from "node:console";
  */
 export const cli = {
     /**
+     * Gets the color based on the number
+     * @method
+     * @param {Number} num - The number to get the color
+     * @returns {String} - The color
+     */
+    colors: (num) => {
+        const colors = ['red', 'cyanBright', 'yellow', 'white', 'cyan', 'blueBright', 'whiteBright'];
+
+        return colors[num % colors.length];
+    },
+
+    /**
      * Prints a success message to the console
      * @method
      * @param {String} message - The message to print
@@ -17,8 +29,16 @@ export const cli = {
     info: (message, options) => {
         if (options) {
             const { color, clear } = options;
+            
             if (clear) console.clear();
-            console.log(chalk[color ?? 'cyanBright'](message));
+
+            if (message.includes('[ACTIVE]')) {
+                console.log(chalk['green']('[ACTIVE]'), chalk[color ?? 'cyanBright'](message.split('[ACTIVE]')[1]));
+            }
+            else if (message.includes('[EMPTY]')) {
+                console.log(chalk['red']('[EMPTY]'), chalk['red'](message.split('[EMPTY]')[1]));
+            }
+            else console.log(chalk[color ?? 'cyanBright'](message));
         }
         else
             console.log(chalk.cyanBright(message));
