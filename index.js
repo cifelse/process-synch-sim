@@ -68,43 +68,50 @@ import ms from "ms";
         try {
             let totalTime = 0;
 
-            while (game.totalPlayers > 0) {
-                const { instances: numInstances, min, max } = game.settings;
+            const { instances: numInstances, min, max } = game.settings;
 
-                const instances = [...Array(numInstances).keys()].map(player => player + 1);
+            const instances = [...Array(numInstances).keys()].map(player => player + 1);
 
-                const sema = new Sema(instances, { capacity: game.totalPlayers });
+            const sema = new Sema(instances.length, { capacity: game.totalPlayers });
 
-                await Promise.all(
-                    instances.map(async (threadId) => {
-                        return new Promise(async (resolve, _) => {
-                            if (game.totalPlayers == 0) {
-                                console.log(`[EMPTY][Dungeon ${threadId}] No Adventures.`);
-                                resolve(true);
-                                return;
-                            }
+            cli.info(`[STARTING SIMULATION]\n`);
 
-                            const time = game.play(min, max);
+            await Promise.all(
+                instances.map(async threadId => {
+                    do {
+                        await sema.acquire();
 
-                            totalTime += time;
+                        const color = cli.colors(threadId);
 
-                            const { dps, healers, tanks } = game.formParty();
-            
-                            console.log(`[ACTIVE][Dungeon ${threadId}] ${dps} DPS, ${healers} Healer, ${tanks} Tank will proceed to a dungeon.`);
+                        if (game.totalPlayers == 0) {
+                            cli.info(`[EMPTY][Dungeon ${threadId}] No Adventurers.`, { color: `red` });
+                            await new Promise(resolve => setTimeout(resolve, 0));
+                            return;
+                        }
 
-                            setTimeout(async () => {
-                                console.log(`[ACTIVE][Dungeon ${threadId}] Dungeon Run Time: ${time}s.`);
+                        cli.info(`[ACTIVE][Dungeon ${threadId}] ${game.totalPlayers} players in the queue.`, { color });
 
-                                sema.release();
+                        // Form a Party
+                        const { dps, healers, tanks } = game.formParty();
+                        cli.info(`[ACTIVE][Dungeon ${threadId}] ${dps} DPS, ${healers} Healer, ${tanks} Tank will proceed to a dungeon.`, { color });
 
-                                resolve(true);
-                            }, ms(`${time}s`));
-                        });
-                    })
-                );
-            }
+                        // Define the time the party will be in the dungeon
+                        const time = game.play(min, max);
+                        totalTime += time;
+
+                        await new Promise(resolve => setTimeout(resolve, ms(`${time}s`)));
+
+                        // Release the Semaphore
+                        cli.info(`[ACTIVE][Dungeon ${threadId}] Dungeon Run Time: ${time}s.`, { color });
+                        sema.release();
+                    }
+                    while (game.totalPlayers > 0);
+                })
+            );
 
             cli.info(`Total Time: ${totalTime}s\n`);
+
+            cli.info(`[END OF SIMULATION]\n`);
         }
         catch (e) {
             cli.error(e);
