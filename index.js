@@ -1,5 +1,7 @@
+import { Sema } from "async-sema";
 import { Game } from "./src/models/game.js";
 import { cli } from "./src/utils/cli.js";
+import ms from "ms";
 
 /**
  * Main Function
@@ -63,8 +65,50 @@ import { cli } from "./src/utils/cli.js";
 
         const game = new Game({ tanks, healers, dps }, { instances, min, max });
 
-        // Play the Game
-        await game.play();
+        try {
+            let totalTime = 0;
+
+            while (game.totalPlayers > 0) {
+                const { instances: numInstances, min, max } = game.settings;
+
+                const instances = [...Array(numInstances).keys()].map(player => player + 1);
+
+                const sema = new Sema(instances, { capacity: game.totalPlayers });
+
+                await Promise.all(
+                    instances.map(async (threadId) => {
+                        return new Promise(async (resolve, _) => {
+                            if (game.totalPlayers == 0) {
+                                console.log(`[EMPTY][Dungeon ${threadId}] No Adventures.`);
+                                resolve(true);
+                                return;
+                            }
+
+                            const time = game.play(min, max);
+
+                            totalTime += time;
+
+                            const { dps, healers, tanks } = game.formParty();
+            
+                            console.log(`[ACTIVE][Dungeon ${threadId}] ${dps} DPS, ${healers} Healer, ${tanks} Tank will proceed to a dungeon.`);
+
+                            setTimeout(async () => {
+                                console.log(`[ACTIVE][Dungeon ${threadId}] Dungeon Run Time: ${time}s.`);
+
+                                sema.release();
+
+                                resolve(true);
+                            }, ms(`${time}s`));
+                        });
+                    })
+                );
+            }
+
+            cli.info(`Total Time: ${totalTime}s\n`);
+        }
+        catch (e) {
+            cli.error(e);
+        }
 
         // Check if the user wants to try again.
         const { answer, error } = await cli.ask(`Try again? [Y/n]: `);
