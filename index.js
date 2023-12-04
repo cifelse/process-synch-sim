@@ -1,4 +1,4 @@
-import { displayResults } from "./src/models/process.js";
+import { Game } from "./src/models/game.js";
 import { cli } from "./src/utils/cli.js";
 
 /**
@@ -53,8 +53,18 @@ import { cli } from "./src/utils/cli.js";
         }
         while (questions.length > 0);
 
-        // Display Results
-        await displayResults(settings);
+        // Display Settings
+        cli.info(`Proceeding with the Simulation with the following Settings.`, { clear: true });
+
+        cli.table(settings, { reduce: true });
+
+        // Retrieve Values from Settings
+        const [instances, tanks, healers, dps, min, max] = settings.map(setting => setting.Value);
+
+        const game = new Game({ tanks, healers, dps }, { instances, min, max });
+
+        // Play the Game
+        await game.play();
 
         // Check if the user wants to try again.
         const { answer, error } = await cli.ask(`Try again? [Y/n]: `);
